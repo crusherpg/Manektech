@@ -1,12 +1,13 @@
 import React, {Component} from 'react';
 import {ToastAndroid,ActivityIndicator,Platform,StyleSheet, Text, View,FlatList ,TouchableOpacity,Button,Dimensions,Image, AsyncStorage} from 'react-native';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-const axios = require('axios');
+import { connect } from "react-redux";
+import { listRestaurants } from '../store/actions/index';
 
 
-export default class MainScreen extends Component {
-    constructor(){
-        super();
+class MainScreen extends Component {
+    constructor(props){
+        super(props);
+        this.props.listRestaurantFunction()
         let isPortrait = (screenWidth,screenHeight) => {
             if(screenHeight >= screenWidth){
                 this.setState({
@@ -39,29 +40,6 @@ export default class MainScreen extends Component {
 
     }
 
-    componentDidMount= async()=>{
-        try{
-            let hasValue =  await AsyncStorage.getItem("dataArray");
-            if(hasValue){
-                return this.setState({isLoading:false, data: JSON.parse(hasValue)})
-            }else{
-                return fetch('http://192.249.121.94/~mobile/interview/public/api/restaurants_list')
-                .then((response) => response.json())
-                .then(async(json) => {
-                (ToastAndroid.show("Calling API...", ToastAndroid.SHORT));
-                await AsyncStorage.setItem("dataArray",JSON.stringify(json.data))
-                return this.setState({isLoading:false, data: json.data})
-                })
-                .catch((error) => {
-                console.error(error);
-                });
-            }
-        }catch(err){
-            alert(err)
-        }
-        
-    }
-
     fillRating=(rating)=>{
         let tempArr=[];
         for(let i=0;i < 5;i++){
@@ -79,12 +57,18 @@ export default class MainScreen extends Component {
     }
 
     render() {
-        if (this.state.orientation === 'portrait') {
+        if(this.props.isLoading){
+            return(
+                <View style={[styles.spinnerStyle]}>
+                    <ActivityIndicator size="large" color="#00ff00" />
+                </View>
+            )
+        }else if (this.state.orientation === 'portrait') {
         return (
             <View style={[styles.container,{width:this.state.screenWidth,height:this.state.screenHeight}]} onLayout={this.isPortrait}>
                 <View>
                 <FlatList 
-                data = {this.state.data}
+                data = {this.props.data}
                 extraData = {this.state.isLoading}
                 keyExtractor={item => item.id}
                 initialNumToRender={10}
@@ -111,7 +95,7 @@ export default class MainScreen extends Component {
                                 </View>
                             </View>
                             <View style={{margin:10}}>
-                            <TouchableOpacity onPress={()=>this.props.navigation.navigate("MapScreen")}>
+                            <TouchableOpacity onPress={()=>this.props.navigation.navigate("MapScreen",{items:item})}>
                                     <Image source={require('../assets/map.png')} style = {{resizeMode: 'contain', width: 25, height: 25,backgroundColor:'#50c878' }}></Image>
                                 </TouchableOpacity>
                             </View>
@@ -129,7 +113,7 @@ export default class MainScreen extends Component {
             <View style={[styles.container,{width:this.state.screenWidth,height:this.state.screenHeight}]} onLayout={this.isPortrait}>
                 <View>
                 <FlatList 
-                data = {this.state.data}
+                data = {this.props.data}
                 extraData = {this.state.isLoading}
                 keyExtractor={item => item.id}
                 initialNumToRender={10}
@@ -148,6 +132,7 @@ export default class MainScreen extends Component {
                             <View style={{flex:1,width:this.state.screenWidth}}>
                                 <View style={{padding:5}}>
                                     <Text>{item.title}</Text>
+                                    {/* <Text>{this.props.title}</Text> */}
                                 </View>
                                 <View style={{padding:5}}>
                                     {
@@ -156,7 +141,7 @@ export default class MainScreen extends Component {
                                 </View>
                             </View>
                             <View style={{margin:10}}>
-                                <TouchableOpacity onPress={()=>this.props.navigation.navigate("MapScreen")}>
+                                <TouchableOpacity onPress={()=>{this.props.navigation.navigate("MapScreen",{items:item})}}>
                                     <Image source={require('../assets/map.png')} style = {{resizeMode: 'contain', width: 25, height: 25,backgroundColor:'#50c878' }}></Image>
                                 </TouchableOpacity>
                             </View>
@@ -202,4 +187,28 @@ const styles = StyleSheet.create({
     color: '#333333',
     marginBottom: 5,
   },
+  spinnerStyle: {
+    flex: 1,
+    justifyContent: "center"
+  },
+  horizontal: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    padding: 10
+  }
 });
+
+const mapStateToProps = state => {
+    return {
+      data: state.listRestaurant.data,
+      isLoading: state.listRestaurant.isLoading
+    };
+  };
+  
+  const mapDispatchToProps = dispatch => {
+    return {
+        listRestaurantFunction: () => dispatch(listRestaurants()),
+    };
+  };
+
+  export default connect( mapStateToProps, mapDispatchToProps) (MainScreen);
